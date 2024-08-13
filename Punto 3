@@ -1,0 +1,58 @@
+# PUNTO 3
+# Codigo para enviar a Firebase los registros que superen cierto umbral.
+
+import firebase_admin
+from firebase_admin import credentials, db
+import psutil
+import time
+
+# Inicializar la aplicación de Firebase
+cred = credentials.Certificate('recuperacion-f115c-firebase-adminsdk-kiza7-1e1e18bdef.json')  # Ruta al archivo de clave privada
+firebase_admin.initialize_app(cred, {
+    'databaseURL': 'https://recuperacion-f115c-default-rtdb.firebaseio.com/'  # URL de tu base de datos en Firebase
+})
+
+# Referencia a la base de datos
+ref = db.reference('/Temperatura')
+
+# Funciones para obtener datos
+def get_cpu_usage():
+    return psutil.cpu_percent(interval=2)
+
+def get_ram_usage():
+    ram = psutil.virtual_memory()
+    return ram.percent
+
+def get_battery_status():
+    battery = psutil.sensors_battery()
+    return battery.percent if battery else None
+
+# Umbral para la temperatura de la CPU y uso de la RAM
+cpu_threshold = 80
+ram_threshold = 80
+
+while True:
+    # Recolectar datos
+    cpu_usage = get_cpu_usage()
+    ram_usage = get_ram_usage()
+    battery_status = get_battery_status()
+
+    # Verificar el umbral y enviar datos a Firebase
+    if cpu_usage > cpu_threshold:
+        ref.child('cpu').push({
+            'value': cpu_usage,
+            'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
+        })
+    if ram_usage > ram_threshold:
+        ref.child('ram').push({
+            'value': ram_usage,
+            'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
+        })
+    if battery_status and battery_status > ram_threshold:
+        ref.child('battery').push({
+            'value': battery_status,
+            'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
+        })
+
+    # Esperar antes de la siguiente lectura
+    time.sleep(30)
