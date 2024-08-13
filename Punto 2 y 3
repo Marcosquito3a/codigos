@@ -1,0 +1,77 @@
+# PUNTO 2 Y 3
+# Este codigo sirve para publicar datos en MQTT y también enviar los registros que superen
+# cierto umbral a Firebase. Este código publicará los datos de uso de CPU, RAM y batería 
+# en MQTT y, además, enviará a Firebase los registros que superen los umbrales definidos 
+# para CPU y RAM, estos datos se pueden visualizar en el dashboard local.
+
+import paho.mqtt.client as mqtt
+import psutil
+import time
+import firebase_admin
+from firebase_admin import credentials, db
+
+# Configuración del cliente MQTT
+broker = "localhost"  # Cambia esto si tu broker no está en localhost
+port = 1883
+
+# Crear una instancia del cliente MQTT
+mqtt_client = mqtt.Client()
+
+# Conectar al broker MQTT
+mqtt_client.connect(broker, port, 60)
+
+# Inicializar la aplicación de Firebase
+cred = credentials.Certificate('recuperacion-f115c-firebase-adminsdk-kiza7-1e1e18bdef.json')  # Ruta al archivo de clave privada
+firebase_admin.initialize_app(cred, {
+    'databaseURL': 'https://recuperacion-f115c-default-rtdb.firebaseio.com/'  # URL de tu base de datos en Firebase
+})
+
+# Referencia a la base de datos de Firebase
+firebase_ref = db.reference('/Temperatura')
+
+# Funciones para obtener datos
+def get_cpu_usage():
+    return psutil.cpu_percent(interval=2)
+
+def get_ram_usage():
+    ram = psutil.virtual_memory()
+    return ram.percent
+
+def get_battery_status():
+    battery = psutil.sensors_battery()
+    return battery.percent if battery else None
+
+# Umbrales para la temperatura de la CPU y uso de la RAM
+cpu_threshold = 80
+ram_threshold = 80
+
+while True:
+    # Recolectar datos
+    cpu_usage = get_cpu_usage()
+    ram_usage = get_ram_usage()
+    battery_status = get_battery_status()
+
+    # Publicar datos en temas MQTT
+    mqtt_client.publish("temperatura/cpu", cpu_usage)
+    mqtt_client.publish("temperatura/ram", ram_usage)
+    mqtt_client.publish("temperatura/bateria", battery_status)
+
+    # Verificar el umbral y enviar datos a Firebase
+    if cpu_usage > cpu_threshold:
+        firebase_ref.child('cpu').push({
+            'value': cpu_usage,
+            'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
+        })
+    if ram_usage > ram_threshold:
+        firebase_ref.child('ram').push({
+            'value': ram_usage,
+            'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
+        })
+    if battery_status and battery_status > ram_threshold:
+        firebase_ref.child('battery').push({
+            'value': battery_status,
+            'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
+        })
+
+    # Esperar antes de la siguiente lectura
+    time.sleep(5)
