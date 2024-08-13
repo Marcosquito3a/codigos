@@ -1,0 +1,38 @@
+# PUNTO 1
+# Codigo para extraer los datos de la CPU, RAM y bateria de mi computador
+
+import psutil
+import time
+
+# Función para obtener el uso del CPU
+def get_cpu_usage():
+    return psutil.cpu_percent(interval=2)
+
+# Función para obtener el uso de la RAM
+def get_ram_usage():
+    ram = psutil.virtual_memory()
+    return ram.percent
+
+# Función para obtener el porcentaje de batería
+def get_battery_status():
+    battery = psutil.sensors_battery()
+    return battery.percent
+
+
+# Función para recolectar los datos
+def collect_data():
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    data = {
+        "timestamp": timestamp,
+        "cpu_usage": get_cpu_usage(),
+        "ram_usage": get_ram_usage(),
+        "battery": get_battery_status(),
+    }
+    return data
+
+# Mostrar los datos recolectados
+data = collect_data()
+print("Timestamp:", data["timestamp"])
+print("CPU Usage (%):", data["cpu_usage"])
+print("RAM Usage (%):", data["ram_usage"])
+print("Battery (%):", data["battery"])
