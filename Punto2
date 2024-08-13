@@ -1,0 +1,42 @@
+# PUNTO 2
+# Codigo para publicar en MQTT y visualizar los datos en el Dashboard
+
+import paho.mqtt.client as mqtt
+import psutil
+import time
+
+# Configuración del cliente MQTT
+broker = "localhost"  # Cambia esto si tu broker no está en localhost
+port = 1883
+
+# Crear una instancia del cliente MQTT
+client = mqtt.Client()
+
+# Conectar al broker MQTT
+client.connect(broker, port, 60)
+
+# Funciones para obtener datos
+def get_cpu_usage():
+    return psutil.cpu_percent(interval=2)
+
+def get_ram_usage():
+    ram = psutil.virtual_memory()
+    return ram.percent
+
+def get_battery_status():
+    battery = psutil.sensors_battery()
+    return battery.percent if battery else None
+
+while True:
+    # Recolectar datos
+    cpu_usage = get_cpu_usage()
+    ram_usage = get_ram_usage()
+    battery_status = get_battery_status()
+
+    # Publicar datos en temas MQTT
+    client.publish("temperatura/cpu", cpu_usage)
+    client.publish("temperatura/ram", ram_usage)
+    client.publish("temperatura/bateria", battery_status)
+
+    # Esperar antes de la siguiente lectura
+    time.sleep(30)
